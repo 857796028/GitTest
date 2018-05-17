@@ -1,0 +1,145 @@
+package com.itheima.bos.web.action;
+
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+
+import org.apache.commons.lang3.StringUtils;
+import org.apache.poi.hssf.usermodel.HSSFSheet;
+import org.apache.poi.hssf.usermodel.HSSFWorkbook;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.struts2.ServletActionContext;
+import org.apache.xml.resolver.apps.resolver;
+import org.hibernate.criterion.DetachedCriteria;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Scope;
+import org.springframework.stereotype.Controller;
+
+import com.itheima.bos.domain.Region;
+import com.itheima.bos.service.IRegionService;
+import com.itheima.bos.utils.PageBean;
+import com.itheima.bos.web.action.base.BaseAction;
+
+import cn.itcast.bos.utils.PinYin4jUtils;
+import net.sf.json.JSON;
+import net.sf.json.JSONObject;
+import net.sf.json.JsonConfig;
+import net.sourceforge.pinyin4j.PinyinHelper;
+
+/**
+ * 区域管理
+ * @author Administrator
+ *
+ */
+@Controller
+@Scope("prototype")
+public class RegionAction extends BaseAction<Region>{
+  //属性驱动,接收上传的文件 只需要get
+	private File regionFile;
+	@Autowired
+	private IRegionService  regionService;
+	public void setRegionFile(File regionFile) {
+		this.regionFile = regionFile;
+	}
+	 
+/**
+ * 区域导入
+ * @throws IOException 
+ * @throws FileNotFoundException 
+ * 
+ */
+	public String importXls() throws FileNotFoundException, IOException{
+		List<Region> regionlist = new ArrayList<Region>();
+		
+	//	System.out.println(regionFile);
+	//下面使用POI解析xml文件
+		HSSFWorkbook  workbook = new HSSFWorkbook(new FileInputStream(regionFile));
+		HSSFSheet sheet = workbook.getSheet("Sheet1");//根据标签页的名字获得指定的sheet对象
+		for (Row row : sheet) {
+			int rowNum = row.getRowNum();
+				if(rowNum == 0){
+					continue;
+				}
+			//现在不是遍历 而是取出每一列      每一行指定的单元格数据读取出来
+				String id = row.getCell(0).getStringCellValue();
+				String province = row.getCell(1).getStringCellValue();
+				String city = row.getCell(2).getStringCellValue();
+				String district = row.getCell(3).getStringCellValue();
+				String postcode = row.getCell(4).getStringCellValue();
+			//包装成一个区域对象
+				Region region = new Region(id, province, city, district, postcode, null, null, null);//前5列的值赋进去
+			//regionService.save(region);//可以直接保存  但是service被套在了for里面    service会开启事物  提交事物需要消耗时间的
+				//================================================
+				//后期加入的pinYin4j的使用
+		      	province =	province.substring(0, province.length()-1);//截断最后一个汉字
+		        city = city.substring(0, city.length()-1);
+		      	district = district.substring(0, district.length()-1);
+		      	
+		      	String info = province+city+district;
+		      	
+		      	String[] headByString = PinYin4jUtils.getHeadByString(info);
+		      	String shortcode = StringUtils.join(headByString);//将数组连接成串儿
+		      	System.out.println(shortcode);
+		      	
+		      	String citycode = PinYin4jUtils.hanziToPinyin(city, ""); //去掉空格  默认有一个空格
+				region.setShortcode(shortcode);
+				region.setCitycode(citycode);
+				
+				
+				//================================================
+				regionlist.add(region);//每次循环完放进集合里 然后再一次性保存  这样可以减少开启事物的数量 减少时间消耗 
+		}
+		System.out.println("regionlist===="+regionlist);
+		regionService.saveBatch(regionlist);
+		
+		return NONE;
+	}
+	/**
+	 * 分页查询的功能region_Querypage.action
+	 */
+
+	public String pageQuery() throws IOException {
+
+		regionService.pageQuery(pageBean);
+
+		this.java2json(pageBean, new String[] { "currentPage", "detachedCriteria", "pageSize","subareas" });
+
+		return NONE;
+	}
+	/**
+	 * 查询所有区域,写回json数据
+	 * @return
+	 */
+	private String q;
+	
+    public String listajax(){
+    	
+    	
+    	
+    	//List<Region> list =	 regionService.findAll();
+        List<Region> list =	 null;
+        if(StringUtils.isNotBlank(q)){
+        	list = regionService.findListByQ(q);
+        	
+        }else{
+        	
+        	list = regionService.findAll();
+        }
+        
+     this.java2json(list, new String[]{"subareas"});  //json只需要id和name
+    	return NONE;
+    }
+
+	public String getQ() {
+		return q;
+	}
+
+	public void setQ(String q) {
+		this.q = q;
+	}
+	
+
+}

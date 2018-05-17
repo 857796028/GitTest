@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<section name="Workbench">
+	<item value="203" key="HistoryTableProvider.HistoryDialog.注释"/>
+	<item value="102" key="HistoryTableProvider.HistoryDialog.日期"/>
+	<item value="200" key="HistoryDialog.weights.2"/>
+	<item value="200" key="HistoryDialog.weights.1"/>
+	<item value="82" key="HistoryTableProvider.HistoryDialog.作者"/>
+	<item value="400" key="HistoryDialog.size.x"/>
+	<item value="147" key="HistoryDialog.location.y"/>
+	<item value="41" key="HistoryTableProvider.HistoryDialog.修订"/>
+	<item value="200" key="HistoryDialog.weights.0"/>
+	<item value="760" key="HistoryDialog.location.x"/>
+	<item value="400" key="HistoryDialog.size.y"/>
+	<section name="NewLocationWizard">
+	</section>
+</section>

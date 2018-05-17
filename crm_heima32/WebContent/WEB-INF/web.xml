@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<web-app xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns="http://java.sun.com/xml/ns/javaee"
+	xsi:schemaLocation="http://java.sun.com/xml/ns/javaee 
+	                    http://java.sun.com/xml/ns/javaee/web-app_2_5.xsd"
+	id="WebApp_ID" version="2.5">
+  <display-name>crm_heima32</display-name>
+  <!-- 配置spring的监听器listener 配置的话,是由监听器加载这个文件  如果不配置,项目启动的时候并没有发布,而是在访问的时候才发布 -->
+ <!-- 默认加载的也是WEB-INF下面的配置文件[/WEB-INF/applicationContext.xml] -->
+  <context-param>
+    <param-name>contextConfigLocation</param-name>
+    <param-value>classpath:cxf.xml</param-value>
+  </context-param>
+  
+  <listener>
+    <listener-class>org.springframework.web.context.ContextLoaderListener</listener-class>
+  </listener>
+  
+ <!-- 配置servlet -->
+  <!-- 配置cxf提供的servlet -->
+  <servlet>
+    <servlet-name>cxf</servlet-name>
+    <servlet-class>org.apache.cxf.transport.servlet.CXFServlet</servlet-class>
+    <!-- 通过初始化参数指定cxf框架的默认位置 -->
+   <!--  <init-param>
+      <param-name>config-location</param-name>
+      <param-value>classpath:cxf.xml</param-value>
+    </init-param> -->
+  </servlet>
+  <servlet-mapping>
+    <servlet-name>cxf</servlet-name>
+    <!-- 并不是处理所有的请求,而是处理带/service/的请求 -->
+    <url-pattern>/service/*</url-pattern>
+  </servlet-mapping>
+ 
+  
+  <welcome-file-list>
+    <welcome-file>index.html</welcome-file>
+    <welcome-file>index.htm</welcome-file>
+    <welcome-file>index.jsp</welcome-file>
+    <welcome-file>default.html</welcome-file>
+    <welcome-file>default.htm</welcome-file>
+    <welcome-file>default.jsp</welcome-file>
+  </welcome-file-list>
+</web-app>

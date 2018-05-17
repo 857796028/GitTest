@@ -1,0 +1,152 @@
+package com.itheima.bos.web.action;
+
+import java.io.IOException;
+import java.util.List;
+
+import javax.annotation.Resource;
+import javax.servlet.ServletContext;
+import javax.servlet.ServletOutputStream;
+
+import org.apache.commons.lang3.StringUtils;
+import org.apache.poi.hssf.usermodel.HSSFRow;
+import org.apache.poi.hssf.usermodel.HSSFSheet;
+import org.apache.poi.hssf.usermodel.HSSFWorkbook;
+import org.apache.struts2.ServletActionContext;
+import org.hibernate.criterion.DetachedCriteria;
+import org.hibernate.criterion.Restrictions;
+import org.springframework.context.annotation.Scope;
+import org.springframework.stereotype.Controller;
+
+import com.itheima.bos.domain.Region;
+import com.itheima.bos.domain.Subarea;
+import com.itheima.bos.service.ISubareaService;
+import com.itheima.bos.web.action.base.BaseAction;
+
+import cn.itcast.bos.utils.FileUtils;
+@Controller
+@Scope("prototype")
+public class SubareaAction extends BaseAction<Subarea>{
+  @Resource
+  private ISubareaService subareaService;
+	
+	/**
+	 * 添加分区
+	 */
+   public String add() throws Exception {
+	// TODO Auto-generated method stub
+	 subareaService.save(model);
+	
+	return LIST; //保存之后希望能够刷新页面
+	
+  }
+   /**
+    * 分页查询
+    * 由于是转pageBean考虑哪些字段需要去掉,因此,首先看staffAction中哪些字段去掉了?
+    * 由于页面需要展示省市区 于是region不去去掉  由于定区decidedzone用不上,于是转json去掉
+    * 由于region关联Subarea ,region不去掉,那么subarea需要去掉,否则是死循环
+    */
+   public  String pageQuery(){
+	   DetachedCriteria dc = pageBean.getDetachedCriteria();
+	   //System.out.println(model);
+	   //动态添加过滤条件
+	   String addresskey = model.getAddresskey();
+	   if(StringUtils.isNotBlank(addresskey)) { //添加过滤条件,根据地址条件 模糊查询
+		   dc.add(Restrictions.like("addresskey", "%"+addresskey+"%"));
+	   }
+	   
+	   Region region = model.getRegion(); //省市区,不是分区表里面的 而是区域表里面的
+	   if(region != null){
+		   String province = region.getProvince();
+		   String city = region.getCity();
+		   String district = region.getDistrict();
+		   dc.createAlias("region", "r");
+		   if(StringUtils.isNotBlank(province)){
+			   //在Subarea里面有一个region   在region里面有province的属性   province不再分区Subarea表里
+			   //   dc.add(Restrictions.like("region.province", "%"+province+"%")); //这样写是错误的
+			   //这里面涉及到多表关联查询,w使用别名方式实现
+			   // dc.查的是分区subarea那张表(subarea.class)
+			   //参数1:分区对象中关联的区域对象属性名称 
+			   //参数2:另名,可以任意
+			   //dc.createAlias("region", "r");  这个条件可以提到if的外面,因为都是region区域,所以可以这样作
+			   dc.add(Restrictions.like("r.province", "%"+province+"%"));
+		   }
+		   if(StringUtils.isNotBlank(city)){
+			   
+			   dc.add(Restrictions.like("r.city", "%"+city+"%"));
+		   }
+		   if(StringUtils.isNotBlank(district)){
+			  
+			   dc.add(Restrictions.like("r.district", "%"+district+"%"));
+		   }
+		   
+	   }
+	   
+	   
+	   subareaService.pageQuery(pageBean);
+	   this.java2json(pageBean, new String[]{"currentPage","detachedCriteria","pageSize","decidedzone","subareas"});
+	  return NONE; 
+   }
+   /**
+    * 分区数据的导出功能
+ * @throws IOException 
+    */
+   
+   public String exportXls() throws IOException{
+	   //第1步:查询分区的所有的数据
+	  List<Subarea> list = subareaService.findAll();
+	   //第2步:使用POI将数据写到Excel文件中
+	   //在内存中创建一个Excel文件
+	  HSSFWorkbook hssfWorkbook = new HSSFWorkbook();
+	  //创建一个标签页
+	  HSSFSheet sheet = hssfWorkbook.createSheet("分区数据");
+	  //创建标题行
+	  HSSFRow headRow = sheet.createRow(0);
+	  //创建单元格
+	  headRow.createCell(0).setCellValue("分区编号");
+	  headRow.createCell(1).setCellValue("开始编号");
+	  headRow.createCell(2).setCellValue("结束编号");
+	  headRow.createCell(3).setCellValue("位置信息");
+	  headRow.createCell(4).setCellValue("省市区");//关联表的信息   相当于标题行搞定
+	 
+	  for(Subarea subarea :list){  //循环写文件到Excel
+		  HSSFRow dataRow = sheet.createRow(sheet.getLastRowNum()+1);
+		        dataRow.createCell(0).setCellValue(subarea.getId());
+		        dataRow.createCell(1).setCellValue(subarea.getStartnum());
+		        dataRow.createCell(2).setCellValue(subarea.getEndnum());
+		        dataRow.createCell(3).setCellValue(subarea.getPosition());
+		        dataRow.createCell(4).setCellValue(subarea.getRegion().getName());
+		  
+	  }
+	  
+	  
+	   //第3步:使用输出流进行文件下载(1个流,2个头)
+	  String filename = "分区数据.xls";//根据后缀获得
+	  String contentType = ServletActionContext.getServletContext().getMimeType(filename);
+	  ServletOutputStream out = ServletActionContext.getResponse().getOutputStream();
+	  //ServletActionContext.getResponse().setContentType("application/vnd.ms-exce");
+	  ServletActionContext.getResponse().setContentType(contentType);
+	  //获取客户端浏览器类型
+	  String agent = ServletActionContext.getRequest().getHeader("User-Agent");
+	  
+	  filename =  FileUtils.encodeDownloadFilename(filename, agent);
+	  //动态获取
+	  ServletActionContext.getResponse().setHeader("content-disposition", "attachment;filename="+filename);
+	  hssfWorkbook.write(out);
+	  
+	  return NONE; //通过输出流,向回写文件
+
+	  
+	 
+   }
+   /**
+    * 查询所有未关联到定区的分区的方法 返回json数据
+    */
+
+	public String listajax() throws Exception {
+		List<Subarea> list =  subareaService.findListNotAssociation();
+		this.java2json(list, new String[]{"decidedzoom","region"}); //把关联对象排除
+		return NONE;
+	}
+   
+}
+

@@ -1,0 +1,47 @@
+package com.itheima.bos.web.action;
+
+import java.io.IOException;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Scope;
+import org.springframework.stereotype.Controller;
+
+import com.itheima.bos.domain.Decidedzoom;
+import com.itheima.bos.service.IDecidedzoneService;
+import com.itheima.bos.web.action.base.BaseAction;
+
+/**
+ * 管理定区的Action
+ * @author Administrator
+ *
+ */
+@Controller
+@Scope("prototype")
+public class DecidedzoneAction extends BaseAction<Decidedzoom> {
+	//属性驱动,接收多个分区id  需要set方法
+	private String[] subareaid;
+	public void setSubareaid(String[] subareaid) {
+		this.subareaid = subareaid;
+	}
+	@Autowired
+	private IDecidedzoneService decidedzoneService;
+	/**
+	 * 添加定区
+	 */
+
+	public String add(){
+		decidedzoneService.save(model,subareaid);
+		return LIST;
+	}
+	
+	/**
+	 * 分页查询方法
+	 */
+	 public String pageQuery() throws IOException{  //currentPage 和rows 及Detached在action封装好 total和rows在dao来处理
+		     decidedzoneService.pageQuery(pageBean);
+		     //定区不需要展示分区表数据
+	    	 this.java2json(pageBean, new String[]{"currentPage","detachedCriteria","pageSize","subareas","decidedzooms"});
+	    	return NONE; //页面发送的是ajax请求,不需要返回数据  使用输出流往回写数据即可
+	     }
+	 
+}

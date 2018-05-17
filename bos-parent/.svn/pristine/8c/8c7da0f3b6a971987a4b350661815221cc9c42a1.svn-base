@@ -1,0 +1,107 @@
+package com.itheima.bos.web.action;
+
+import java.util.List;
+
+import javax.persistence.metamodel.Metamodel;
+
+import org.apache.commons.lang3.StringUtils;
+import org.apache.struts2.ServletActionContext;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Scope;
+import org.springframework.stereotype.Controller;
+
+import com.itheima.bos.domain.User;
+import com.itheima.bos.service.IUserService;
+import com.itheima.bos.utils.BOSUtils;
+import com.itheima.bos.web.action.base.BaseAction;
+import com.itheima.crm.Customer;
+import com.itheima.crm.ICustomerService;
+
+@Controller("userAction")
+@Scope("prototype")
+public class UserAction extends BaseAction<User> {
+	
+
+	
+	
+	//属性驱动，接收页面输入的验证码
+	private String checkcode;
+	public void setCheckcode(String checkcode) {
+		this.checkcode = checkcode;
+	}
+	
+	@Autowired
+	private IUserService userService;
+	
+	/**
+	 * 用户登录
+	 */
+	public String login(){
+		//测试代理对象的使用
+
+		
+		//从Session中获取生成的验证码
+		String validatecode = (String) ServletActionContext.getRequest().getSession().getAttribute("key");
+		//校验验证码是否输入正确
+		if(StringUtils.isNotBlank(checkcode) && checkcode.equals(validatecode)){
+			//输入的验证码正确
+			User user = userService.login(model);
+			if(user != null){
+				//登录成功,将user对象放入session，跳转到首页
+				ServletActionContext.getRequest().getSession().setAttribute("loginUser", user);
+				return HOME;
+			}else{
+				//登录失败，,设置提示信息，跳转到登录页面
+				//输入的验证码错误,设置提示信息，跳转到登录页面
+				this.addActionError("用户名或者密码输入错误！");
+				return LOGIN;
+			}
+		}else{
+			//输入的验证码错误,设置提示信息，跳转到登录页面
+			this.addActionError("输入的验证码错误！");
+			return LOGIN;
+		}
+	}
+	
+	/**
+	 * 用户注销
+	 * 首先拿到session 然后再点击失效 就OK
+	 */
+	public String logout(){
+		ServletActionContext.getRequest().getSession().invalidate();
+		return LOGIN;
+	}
+	/**
+	 * 修改密码
+	 * 
+	 */
+	public String editPassword() throws Exception {
+		//页面提交过来的是password 可以封装到model对象里面
+		//修改当前用户的密码 
+		/*
+		User user = BOSUtils.getLoginUser();
+		user.setPassword(model.getPassword());
+		 然后再调用service 中的update(user),这样做可以
+		*update t_user set password = ? where id = ?(需要的)
+		*现在更新的user对象
+		*update t_user set username = ?,sex = ?,telephoen = ?,address= ? ,password = ? where id = ?
+		*把所有的字段都更新了 而更新user对象  则是除了id 都更新了 直接更新user对象不合适
+		*/
+		String f = "1";  //f是一个标致位
+		User user = BOSUtils.getLoginUser();
+		try {
+			userService.editPassword(user.getId(),model.getPassword());
+		} catch (Exception e) {
+			f = "0";//如果失败变为0
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		//直接使用1 页面当成对象  必须指定类型
+		ServletActionContext.getResponse().setContentType("text/html;charset=utf-8");
+		ServletActionContext.getResponse().getWriter().print(f);
+		
+		
+	  return NONE;//页面发关的是ajax请求,往回写一个数据就行,不需要跳页面 页面不需要刷新
+	}
+	
+}

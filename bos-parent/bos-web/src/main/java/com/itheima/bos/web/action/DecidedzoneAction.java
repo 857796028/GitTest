@@ -1,0 +1,99 @@
+package com.itheima.bos.web.action;
+
+import java.io.IOException;
+import java.util.List;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Scope;
+import org.springframework.stereotype.Controller;
+
+import com.itheima.bos.domain.Decidedzoom;
+import com.itheima.bos.service.IDecidedzoneService;
+import com.itheima.bos.web.action.base.BaseAction;
+import com.itheima.crm.Customer;
+import com.itheima.crm.ICustomerService;
+
+/**
+ * 管理定区的Action
+ * @author Administrator
+ *
+ */
+@Controller
+@Scope("prototype")
+public class DecidedzoneAction extends BaseAction<Decidedzoom> {
+	//属性驱动,接收多个分区id  需要set方法
+	private String[] subareaid;
+	public void setSubareaid(String[] subareaid) {
+		this.subareaid = subareaid;
+	}
+	@Autowired
+	private IDecidedzoneService decidedzoneService;
+	/**
+	 * 添加定区
+	 */
+
+	public String add(){
+		decidedzoneService.save(model,subareaid);
+		return LIST;
+	}
+	
+	/**
+	 * 分页查询方法
+	 */
+	 public String pageQuery() throws IOException{  //currentPage 和rows 及Detached在action封装好 total和rows在dao来处理
+		     decidedzoneService.pageQuery(pageBean);
+		     //定区不需要展示分区表数据
+	    	 this.java2json(pageBean, new String[]{"currentPage","detachedCriteria","pageSize","subareas","decidedzooms"});
+	    	return NONE; //页面发送的是ajax请求,不需要返回数据  使用输出流往回写数据即可
+	     }
+	 
+	 /**
+	  * 
+	  */
+	 //注入crm代理对象
+	 @Autowired
+	 private ICustomerService  proxy;
+	 
+	 //远程调用CRM获取到未关联到定区的客户
+	 public String findListNotAssociation(){
+		 
+		List<Customer> list =  proxy.findListNotAssociation();
+		this.java2json(list, new String[]{});
+		
+		 return NONE;
+		 
+	 }
+	 
+	 //远程调用crm获取到已经关联到指定的定区的的客户
+	public String findListHasAssociation(){
+	String id = model.getId();
+	  List<Customer> list =	proxy.findListHasAssociation(id);
+	  this.java2json(list, new String[]{});
+	
+	 return NONE;
+		
+	} 
+	/**
+	 * 远程调用crm,将客户关联到定区  哪些袖客户? 提交牟参数为customerIds
+	 */
+	//属性驱动,接收页面提交的多个客户id
+	private List<Integer> customerIds; 
+	public String assigncustomerstodecidedzone(){
+		proxy.assigncustomerstodecidedzone(model.getId(), getCustomerIds());
+		
+		return LIST;
+	}
+
+	public List<Integer> getCustomerIds() {
+		return customerIds;
+	}
+
+	public void setCustomerIds(List<Integer> customerIds) {
+		this.customerIds = customerIds;
+	}
+	
+	
+	
+	
+	 
+}
